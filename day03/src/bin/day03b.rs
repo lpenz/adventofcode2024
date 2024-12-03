@@ -4,23 +4,21 @@
 
 use day03::*;
 
-use regex::Regex;
-
 fn process(bufin: impl BufRead) -> Result<u64> {
-    let input = std::io::read_to_string(bufin)?;
-    let re = Regex::new(r"mul\(([0-9]+),([0-9]+)\)").unwrap();
-    Ok(re
-        .captures_iter(&input)
-        .map(|m| {
-            let (_, [n1, n2]) = m.extract();
-            n1.parse::<u64>().unwrap() * n2.parse::<u64>().unwrap()
+    let input = parser::parse(bufin)?;
+    Ok(input
+        .into_iter()
+        .fold((true, 0_u64), |(enabled, sum), instr| match instr {
+            Instr::Do => (true, sum),
+            Instr::Dont => (false, sum),
+            Instr::Mul(n1, n2) => (enabled, if enabled { sum + n1 * n2 } else { sum }),
         })
-        .sum())
+        .1)
 }
 
 #[test]
 fn test() -> Result<()> {
-    assert_eq!(process(EXAMPLE1.as_bytes())?, 161);
+    assert_eq!(process(EXAMPLE2.as_bytes())?, 48);
     Ok(())
 }
 
