@@ -2,6 +2,8 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+use cached::proc_macro::cached;
+
 pub use aoc::*;
 
 pub const EXAMPLE: &str = "0 1 10 99 999\n";
@@ -31,6 +33,7 @@ fn test() -> Result<()> {
     Ok(())
 }
 
+#[cached]
 fn blinks(num: usize, value: Stone) -> usize {
     if num == 0 {
         1
