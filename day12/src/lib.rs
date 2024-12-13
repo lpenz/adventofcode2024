@@ -17,6 +17,21 @@ OXOXO
 OOOOO
 ";
 
+pub const EXAMPLE3: &str = "EEEEE
+EXXXX
+EEEEE
+EXXXX
+EEEEE
+";
+
+pub const EXAMPLE4: &str = "AAAAAA
+AAABBA
+AAABBA
+ABBAAA
+ABBAAA
+AAAAAA
+";
+
 pub type Cell = char;
 
 pub mod parser {
