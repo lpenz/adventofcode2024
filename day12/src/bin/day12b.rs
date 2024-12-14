@@ -52,7 +52,7 @@ fn process(bufin: impl BufRead) -> Result<usize> {
     // Calculate each area and sides and use them to calculate the final result.
     Ok(regions
         .into_iter()
-        .map(|(c, coords)| {
+        .map(|(_c, coords)| {
             let area = coords.len();
             let mut visited = HashSet::<((i32, i32), Dir)>::default();
             let mut sides = 0;
