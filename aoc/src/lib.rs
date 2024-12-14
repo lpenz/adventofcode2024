@@ -50,6 +50,28 @@ pub mod parser {
         let (input, cs) = multi::many1(lowercase_char)(input)?;
         Ok((input, cs.into_iter().collect()))
     }
+
+    pub fn grid_line<'a, O, E, F>(f: F) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, E>
+    where
+        E: nom::error::ParseError<&'a str>,
+        F: nom::Parser<&'a str, O, E>,
+        F: Copy,
+    {
+        move |input| {
+            let (input, cell) = multi::many1(f)(input)?;
+            let (input, _) = character::newline(input)?;
+            Ok((input, cell))
+        }
+    }
+
+    pub fn grid<'a, O, E, F>(f: F) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<Vec<O>>, E>
+    where
+        E: nom::error::ParseError<&'a str>,
+        F: nom::Parser<&'a str, O, E>,
+        F: Copy,
+    {
+        move |input| multi::many1(grid_line(f))(input)
+    }
 }
 
 pub trait OptionExt<T> {
