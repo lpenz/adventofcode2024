@@ -42,6 +42,11 @@ pub mod parser {
         tag(" ")(input)
     }
 
+    pub fn digit1(input: &str) -> IResult<&str, u8> {
+        character::one_of("0123456789")(input)
+            .map(|(input, c)| (input, c.to_digit(10).unwrap() as u8))
+    }
+
     pub fn lowercase_char(input: &str) -> IResult<&str, char> {
         satisfy(|c| c.is_ascii_lowercase())(input)
     }
