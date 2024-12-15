@@ -97,6 +97,29 @@ impl<T> OptionExt<T> for Option<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct OrdWrapper<T>(pub T);
+
+impl<T: Debug> std::cmp::PartialEq for OrdWrapper<T> {
+    fn eq(&self, other: &Self) -> bool {
+        format!("{:?}", self).eq(&format!("{:?}", other))
+    }
+}
+
+impl<T: Debug> Eq for OrdWrapper<T> {}
+
+impl<T: Debug> std::cmp::PartialOrd for OrdWrapper<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T: Debug> std::cmp::Ord for OrdWrapper<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        format!("{:?}", self).cmp(&format!("{:?}", other))
+    }
+}
+
 pub fn elapsed(start: &Instant) -> String {
     format!("{}", humantime::Duration::from(start.elapsed()))
 }
