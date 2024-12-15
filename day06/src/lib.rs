@@ -91,6 +91,6 @@ pub mod parser {
 fn test() -> Result<()> {
     let input = parser::parse(EXAMPLE.as_bytes())?;
     assert_eq!(input.0.len(), 8);
-    assert_eq!(input.1 .0, (4, 6));
+    assert_eq!(input.1.tuple(), (4, 6));
     Ok(())
 }
