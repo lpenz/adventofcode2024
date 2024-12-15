@@ -22,8 +22,8 @@ Button B: X+27, Y+71
 Prize: X=18641, Y=10279
 ";
 
-pub type Num = i32;
-pub type XY = Complex<i32>;
+pub type Num = u64;
+pub type XY = Complex<Num>;
 
 pub mod parser {
     use aoc::parser::*;
@@ -31,7 +31,7 @@ pub mod parser {
     use super::*;
 
     fn num(input: &str) -> IResult<&str, Num> {
-        character::i32(input)
+        character::u64(input)
     }
 
     fn button_a(input: &str) -> IResult<&str, XY> {
