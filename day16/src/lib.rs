@@ -67,6 +67,7 @@ impl TryFrom<char> for Cell {
 }
 
 pub type Sqrid = sqrid::sqrid_create!(142, 142, false);
+// pub type Sqrid = sqrid::sqrid_create!(17, 17, false);
 pub type Pos = sqrid::pos_create!(Sqrid);
 pub type Grid = sqrid::grid_create!(Sqrid, Cell);
 pub use sqrid::Dir;
@@ -106,16 +107,19 @@ fn test_a2() -> Result<()> {
     Ok(())
 }
 
+pub fn grid_find(g: &Grid, cell: Cell) -> Pos {
+    g.iter_pos()
+        .find_map(|(p, c)| (*c == cell).then_some(p))
+        .unwrap()
+}
+
 pub fn go(g: &Grid, p: Pos, d: Dir) -> Option<Pos> {
     (p + d).ok().filter(|p| g[p] != Cell::Wall)
 }
 
 pub fn calc_best(g: &Grid) -> Result<usize> {
     let mut frontier = BinaryHeap::<(Reverse<usize>, Pos, Dir)>::new();
-    let pos0 = g
-        .iter_pos()
-        .find_map(|(p, c)| (*c == Cell::Start).then_some(p))
-        .unwrap();
+    let pos0 = grid_find(g, Cell::Start);
     let dir0 = Dir::E;
     frontier.push((Reverse(0), pos0, dir0));
     let mut visited = HashSet::new();
