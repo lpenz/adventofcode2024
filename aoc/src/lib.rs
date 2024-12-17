@@ -42,9 +42,20 @@ pub mod parser {
         tag(" ")(input)
     }
 
+    pub fn digit1_one_of<'a, E>(
+        valid: &str,
+    ) -> impl FnMut(&'a str) -> IResult<&'a str, u8, E> + use<'a, '_, E>
+    where
+        E: nom::error::ParseError<&'a str>,
+    {
+        move |input| {
+            let (input, c) = character::one_of(valid)(input)?;
+            Ok((input, c.to_digit(10).unwrap() as u8))
+        }
+    }
+
     pub fn digit1(input: &str) -> IResult<&str, u8> {
-        character::one_of("0123456789")(input)
-            .map(|(input, c)| (input, c.to_digit(10).unwrap() as u8))
+        digit1_one_of("0123456789")(input)
     }
 
     pub fn lowercase_char(input: &str) -> IResult<&str, char> {
