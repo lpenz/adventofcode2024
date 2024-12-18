@@ -11,7 +11,7 @@ Register C: 0
 Program: 0,1,5,4,3,0
 ";
 
-pub type Num = i32;
+pub type Num = u64;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Registers {
@@ -125,15 +125,17 @@ pub type Program = Vec<Operation>;
 pub struct Computer {
     pub regs: Registers,
     pub prog: Program,
+    pub prog_vec: Vec<u8>,
     pub ip: usize,
-    pub output: Vec<Num>,
+    pub output: Vec<u8>,
 }
 
 impl Computer {
-    pub fn new(regs: Registers, prog: Program) -> Computer {
+    pub fn new(regs: Registers, prog: Program, prog_vec: Vec<u8>) -> Computer {
         Computer {
             regs,
             prog,
+            prog_vec,
             ..Default::default()
         }
     }
@@ -169,7 +171,7 @@ impl Computer {
                 self.regs[Reg::B] ^= self.regs[Reg::C];
             }
             Instruction::Out => {
-                self.output.push(op % 8);
+                self.output.push((op % 8) as u8);
             }
             Instruction::Bdv => {
                 self.regs[Reg::B] = self.regs[Reg::A] / (1 << op);
@@ -180,8 +182,12 @@ impl Computer {
         }
     }
 
+    pub fn halted(&self) -> bool {
+        self.ip >= 2 * self.prog.len()
+    }
+
     pub fn run(&mut self) {
-        while self.ip < 2 * self.prog.len() {
+        while !self.halted() {
             // eprintln!("regs {:?}", self.regs);
             // let (instr, opcode) = self.prog[self.ip / 2];
             // let op = self.get(&opcode);
@@ -206,7 +212,7 @@ impl Computer {
 fn test1() {
     let regs = Registers { a: 0, b: 0, c: 9 };
     let prog = parser::parse_program("2,6".as_bytes()).unwrap();
-    let mut cpu = Computer::new(regs, prog);
+    let mut cpu = Computer::new(regs, prog, vec![]);
     cpu.run();
     assert_eq!(cpu.regs[Reg::B], 1);
 }
@@ -215,7 +221,7 @@ fn test1() {
 fn test2() {
     let regs = Registers { a: 10, b: 0, c: 0 };
     let prog = parser::parse_program("5,0,5,1,5,4".as_bytes()).unwrap();
-    let mut cpu = Computer::new(regs, prog);
+    let mut cpu = Computer::new(regs, prog, vec![]);
     cpu.run();
     assert_eq!(cpu.output_str(), "0,1,2");
 }
@@ -228,7 +234,7 @@ fn test3() {
         c: 0,
     };
     let prog = parser::parse_program("0,1,5,4,3,0".as_bytes()).unwrap();
-    let mut cpu = Computer::new(regs, prog);
+    let mut cpu = Computer::new(regs, prog, vec![]);
     cpu.run();
     assert_eq!(cpu.output_str(), "4,2,5,6,7,7,7,7,3,1,0");
     assert_eq!(cpu.regs[Reg::A], 0);
@@ -238,7 +244,7 @@ fn test3() {
 fn test4() {
     let regs = Registers { a: 0, b: 29, c: 0 };
     let prog = parser::parse_program("1,7".as_bytes()).unwrap();
-    let mut cpu = Computer::new(regs, prog);
+    let mut cpu = Computer::new(regs, prog, vec![]);
     cpu.run();
     assert_eq!(cpu.regs[Reg::B], 26);
 }
@@ -251,7 +257,7 @@ fn test5() {
         c: 43690,
     };
     let prog = parser::parse_program("4,0".as_bytes()).unwrap();
-    let mut cpu = Computer::new(regs, prog);
+    let mut cpu = Computer::new(regs, prog, vec![]);
     cpu.run();
     assert_eq!(cpu.regs[Reg::B], 44354);
 }
@@ -262,7 +268,7 @@ pub mod parser {
     use super::*;
 
     fn num(input: &str) -> IResult<&str, Num> {
-        character::i32(input)
+        character::u64(input)
     }
 
     fn registers(input: &str) -> IResult<&str, Registers> {
@@ -276,32 +282,37 @@ pub mod parser {
         Ok((input, Registers { a, b, c }))
     }
 
-    fn operation(input: &str) -> IResult<&str, Operation> {
-        let (input, instr) = digit1_one_of("01234567")(input)
-            .map(|(input, c)| (input, Instruction::try_from(c).unwrap()))?;
+    fn operation(input: &str) -> IResult<&str, (Operation, (u8, u8))> {
+        let (input, instr_u8) = digit1_one_of("01234567")(input)?;
         let (input, _) = tag(",")(input)?;
-        let (input, opvalue) = digit1_one_of("01234567")(input)?;
-        let operand = Operand::new_instr(&instr, opvalue);
-        Ok((input, (instr, operand)))
+        let (input, op_u8) = digit1_one_of("01234567")(input)?;
+        let instruction = Instruction::try_from(instr_u8).unwrap();
+        let operand = Operand::new_instr(&instruction, op_u8);
+        Ok((input, ((instruction, operand), (instr_u8, op_u8))))
     }
 
-    fn program_contents(input: &str) -> IResult<&str, Program> {
-        let (input, prg) = multi::separated_list1(tag(","), operation)(input)?;
-        Ok((input, prg))
+    fn program_contents(input: &str) -> IResult<&str, (Program, Vec<u8>)> {
+        let (input, ops) = multi::separated_list1(tag(","), operation)(input)?;
+        let prg = ops.iter().map(|(a, _)| *a).collect::<Program>();
+        let prg_vec = ops
+            .iter()
+            .flat_map(|(_, a)| vec![a.0, a.1])
+            .collect::<Vec<_>>();
+        Ok((input, (prg, prg_vec)))
     }
 
-    fn program(input: &str) -> IResult<&str, Program> {
+    fn program(input: &str) -> IResult<&str, (Program, Vec<u8>)> {
         let (input, _) = tag("Program: ")(input)?;
-        let (input, prg) = program_contents(input)?;
+        let (input, (prg, prg_vec)) = program_contents(input)?;
         let (input, _) = character::newline(input)?;
-        Ok((input, prg))
+        Ok((input, (prg, prg_vec)))
     }
 
     fn all(input: &str) -> IResult<&str, Computer> {
         let (input, regs) = registers(input)?;
         let (input, _) = character::newline(input)?;
-        let (input, prg) = program(input)?;
-        Ok((input, Computer::new(regs, prg)))
+        let (input, (prg, prg_vec)) = program(input)?;
+        Ok((input, Computer::new(regs, prg, prg_vec)))
     }
 
     pub fn parse(mut bufin: impl BufRead) -> Result<Computer> {
@@ -309,7 +320,7 @@ pub mod parser {
     }
 
     pub fn parse_program(mut bufin: impl BufRead) -> Result<Program> {
-        aoc::parse_with!(program_contents, bufin)
+        aoc::parse_with!(program_contents, bufin).map(|(a, _)| a)
     }
 }
 
