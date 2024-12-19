@@ -4,9 +4,6 @@
 
 use day18::*;
 
-use rayon::iter::ParallelBridge;
-use rayon::prelude::ParallelIterator;
-
 fn go(gb: &Gridbool, size: u16, p: Pos, d: Dir) -> Option<Pos> {
     (p + d)
         .ok()
@@ -22,8 +19,7 @@ fn process(size: u16, bufin: impl BufRead) -> Result<Pos> {
             gb.set_t(&p);
             Some((p, *gb))
         })
-        .par_bridge()
-        .find_first(|(_, gb)| {
+        .find(|(_, gb)| {
             let pathopt = Sqrid::astar_path(|p, d| go(gb, size, p, d), &Pos::TOP_LEFT, &target);
             pathopt.is_err()
         })
