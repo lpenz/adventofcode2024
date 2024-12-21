@@ -28,9 +28,6 @@ pub fn find_path(g: &Grid, start: Pos) -> Cost {
             let Some(pos) = (pos0 + dir).ok().filter(|p| g[p] != Cell::Wall) else {
                 continue;
             };
-            if g[&pos] == Cell::Wall {
-                continue;
-            }
             let e = costmap.entry(pos).or_insert(usize::MAX);
             if newcost < *e {
                 *e = newcost;
