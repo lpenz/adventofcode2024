@@ -812,9 +812,9 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "sqrid"
-version = "0.0.29"
+version = "0.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9947d73300be39d82152c38d3a5db036a8670f640651b73e05d52e854950ff60"
+checksum = "dce3e886c339afc32a24367dbc684e74caa965b865ae92a1ef9368561b1dcd92"
 
 [[package]]
 name = "strsim"
