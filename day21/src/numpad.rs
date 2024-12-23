@@ -5,6 +5,8 @@
 pub use sqrid::Dir;
 use sqrid::PosT;
 
+use std::sync::OnceLock;
+
 use std::collections::HashMap;
 
 pub use super::keypad::*;
@@ -55,23 +57,61 @@ pub type SqridNum = sqrid::sqrid_create!(2, 3, false);
 pub type PosNum = sqrid::pos_create!(SqridNum);
 pub type GridNum = sqrid::grid_create!(SqridNum, NumCell);
 
-pub fn numpad_get() -> GridNum {
-    [
-        NumCell::Num(7),
-        NumCell::Num(8),
-        NumCell::Num(9),
-        NumCell::Num(4),
-        NumCell::Num(5),
-        NumCell::Num(6),
-        NumCell::Num(1),
-        NumCell::Num(2),
-        NumCell::Num(3),
-        NumCell::Invalid,
-        NumCell::Num(0),
-        NumCell::A,
-    ]
-    .into_iter()
-    .collect::<GridNum>()
+pub const NUMPAD_POS_START: PosNum = PosNum::new_static::<2, 3>();
+
+#[derive(Clone)]
+pub struct Numpad {
+    pub grid: GridNum,
+    pub paths: HashMap<(NumCell, NumCell), Vec<Vec<KeyCell>>>,
+}
+
+impl Default for Numpad {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Numpad {
+    pub fn new() -> Self {
+        let grid = [
+            NumCell::Num(7),
+            NumCell::Num(8),
+            NumCell::Num(9),
+            NumCell::Num(4),
+            NumCell::Num(5),
+            NumCell::Num(6),
+            NumCell::Num(1),
+            NumCell::Num(2),
+            NumCell::Num(3),
+            NumCell::Invalid,
+            NumCell::Num(0),
+            NumCell::A,
+        ]
+        .into_iter()
+        .collect::<GridNum>();
+        Self {
+            grid,
+            paths: numpad_bestpaths(&grid),
+        }
+    }
+
+    pub fn press(&self, buttons: &[KeyCell]) -> Vec<NumCell> {
+        buttons
+            .iter()
+            .fold((NUMPAD_POS_START, vec![]), |(mut pos, mut ret), button| {
+                match button {
+                    KeyCell::Invalid => panic!("went over invalid!"),
+                    KeyCell::D(dir) => pos = (pos + *dir).expect("invalid direction"),
+                    KeyCell::A => ret.push(self.grid[pos]),
+                }
+                (pos, ret)
+            })
+            .1
+    }
+
+    pub fn paths_get(&self, start: &NumCell, end: &NumCell) -> impl Iterator<Item = &Vec<KeyCell>> {
+        self.paths.get(&(*start, *end)).unwrap().iter()
+    }
 }
 
 pub fn numseq2str(seq: &[NumCell]) -> String {
@@ -82,30 +122,18 @@ pub fn numseq2str(seq: &[NumCell]) -> String {
     s
 }
 
-pub const NUMPAD_POS_START: PosNum = PosNum::new_static::<2, 3>();
-
-pub fn numpad_use(buttons: &[KeyCell]) -> Vec<NumCell> {
-    let g = numpad_get();
-    let mut pos = NUMPAD_POS_START;
-    let mut r = vec![];
-    for button in buttons {
-        match button {
-            KeyCell::Invalid => panic!("went over invalid!"),
-            KeyCell::D(dir) => pos = (pos + *dir).expect("invalid direction"),
-            KeyCell::A => r.push(g[pos]),
-        }
-    }
-    r
-}
-
-pub fn numpad_dfs(
+fn numpad_dfs(
+    g: &GridNum,
     src: PosNum,
     pos0: PosNum,
     path: &mut Vec<KeyCell>,
+    dpath: &mut Vec<Dir>,
     bestpaths: &mut HashMap<(NumCell, NumCell), Vec<Vec<KeyCell>>>,
 ) {
-    let g = numpad_get();
     for dir in Dir::iter::<false>() {
+        if dpath.contains(&dir) && dpath[dpath.len() - 1] != dir {
+            continue;
+        }
         let Some(pos) = (pos0 + dir)
             .ok()
             .filter(|p| *p != src && g[p] != NumCell::Invalid)
@@ -113,6 +141,7 @@ pub fn numpad_dfs(
             continue;
         };
         path.push(KeyCell::D(dir));
+        dpath.push(dir);
         let e = bestpaths.entry((g[src], g[pos])).or_default();
         if e.is_empty() || path.len() <= e[0].len() {
             path.push(KeyCell::A);
@@ -122,14 +151,14 @@ pub fn numpad_dfs(
                 e.push(path.clone());
             }
             path.pop();
-            numpad_dfs(src, pos, path, bestpaths);
+            numpad_dfs(g, src, pos, path, dpath, bestpaths);
         }
         path.pop();
+        dpath.pop();
     }
 }
 
-pub fn numpad_bestpaths_all() -> HashMap<(NumCell, NumCell), Vec<Vec<KeyCell>>> {
-    let g = numpad_get();
+fn numpad_bestpaths(g: &GridNum) -> HashMap<(NumCell, NumCell), Vec<Vec<KeyCell>>> {
     let mut bestpaths = HashMap::<(NumCell, NumCell), Vec<Vec<KeyCell>>>::new();
     for p in PosNum::iter() {
         if g[p] == NumCell::Invalid {
@@ -137,55 +166,20 @@ pub fn numpad_bestpaths_all() -> HashMap<(NumCell, NumCell), Vec<Vec<KeyCell>>> 
         }
         bestpaths.insert((g[p], g[p]), vec![]);
         let mut path = vec![];
-        numpad_dfs(p, p, &mut path, &mut bestpaths);
+        let mut dpath = vec![];
+        numpad_dfs(g, p, p, &mut path, &mut dpath, &mut bestpaths);
     }
     bestpaths
 }
 
-pub fn numpad_sequences(code: &[NumCell]) -> Vec<Vec<KeyCell>> {
-    let bestpaths = numpad_bestpaths_all();
-    let mut prev = NumCell::A;
-    let mut paths: Vec<Vec<KeyCell>> = vec![];
-    for target in code {
-        let mut newpaths = vec![];
-        if paths.is_empty() {
-            for newsegment in &bestpaths[&(prev, *target)] {
-                newpaths.push(newsegment.clone());
-            }
-        } else {
-            for path in &paths {
-                for newsegment in &bestpaths[&(prev, *target)] {
-                    let mut newpath = path.clone();
-                    newpath.extend(newsegment.iter());
-                    newpaths.push(newpath);
-                }
-            }
-        }
-        prev = *target;
-        let _ = std::mem::replace(&mut paths, newpaths);
-    }
-    paths
-}
-
-pub fn numericpart_calc(code: &[NumCell]) -> usize {
-    code.iter().fold(0, |acc, n| {
-        if let Ok(n) = usize::try_from(*n) {
-            acc * 10 + n
-        } else {
-            acc
-        }
-    })
+pub fn numpad_get() -> &'static Numpad {
+    static MEM: OnceLock<Numpad> = OnceLock::new();
+    MEM.get_or_init(Numpad::default)
 }
 
 #[test]
-fn test_numericpart_calc() {
-    assert_eq!(
-        numericpart_calc(&vec![
-            NumCell::Num(0),
-            NumCell::Num(2),
-            NumCell::Num(9),
-            NumCell::A
-        ]),
-        29
-    );
+fn test_numpad() {
+    let numpad = numpad_get();
+    assert_eq!(numpad.paths[&(NumCell::A, NumCell::Num(7))].len(), 1);
+    assert_eq!(numpad.paths[&(NumCell::Num(3), NumCell::Num(7))].len(), 2);
 }

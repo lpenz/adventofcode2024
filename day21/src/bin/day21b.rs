@@ -9,17 +9,11 @@ fn process(bufin: impl BufRead) -> Result<usize> {
     Ok(input
         .into_iter()
         .map(|seq| {
-            let fullseqlen = numpad_sequence_len(2, &seq);
+            let fullseqlen = numpad_sequence_len(25, &seq);
             let numericpart = numericpart_calc(&seq);
             fullseqlen * numericpart
         })
         .sum())
-}
-
-#[test]
-fn test() -> Result<()> {
-    assert_eq!(process(EXAMPLE.as_bytes())?, 126384);
-    Ok(())
 }
 
 fn main() -> Result<()> {
