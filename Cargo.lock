@@ -199,6 +199,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "copstr"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "746fca5d567fdeb2dba431861b02fb33c714ce0188472317e2363ab8da92d336"
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -480,6 +486,17 @@ version = "0.1.0"
 dependencies = [
  "aoc",
  "color-eyre",
+ "nom",
+]
+
+[[package]]
+name = "day23"
+version = "0.1.0"
+dependencies = [
+ "aoc",
+ "color-eyre",
+ "copstr",
+ "itertools",
  "nom",
 ]
 
