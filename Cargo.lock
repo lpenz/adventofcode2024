@@ -508,7 +508,9 @@ dependencies = [
  "aoc",
  "color-eyre",
  "copstr",
+ "itertools",
  "nom",
+ "rayon",
 ]
 
 [[package]]
